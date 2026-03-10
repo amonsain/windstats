@@ -261,9 +261,10 @@ function renderLiveBanner(station, data) {
 
   let activeEp = null;
   let activePh = null;
+  let activeStart = null;
 
   for (const ph of station.phenomena) {
-    const { direction, tolerance, speed_avg_min, hours: hourWindow } = ph;
+    const { direction, tolerance, speed_avg_min, hours: hourWindow, gap_max } = ph;
     const lh = localHour(last.hour, CONFIG.timezone);
     if (hourWindow) {
       const [from, to] = hourWindow;
@@ -271,13 +272,34 @@ function renderLiveBanner(station, data) {
     }
     if (!inDirectionRange(last.heading, direction, tolerance)) continue;
     if (last.speed_avg < speed_avg_min) continue;
+
+    // Remonter pour trouver le vrai début de l'épisode
+    const STEP_MS = 15 * 60 * 1000;
+    const maxGap = gap_max || 15;
+    let startIdx = data.hours.length - 1;
+    for (let i = data.hours.length - 2; i >= 0; i--) {
+      const h = data.hours[i];
+      const next = data.hours[i + 1];
+      const gapMin = (parseHourStr(next.hour) - parseHourStr(h.hour)) / 60000;
+      if (gapMin > maxGap) break;
+      const hlh = localHour(h.hour, CONFIG.timezone);
+      if (hourWindow) {
+        const [from, to] = hourWindow;
+        if (hlh < from || hlh >= to) break;
+      }
+      if (!inDirectionRange(h.heading, direction, tolerance)) break;
+      if (h.speed_avg < speed_avg_min) break;
+      startIdx = i;
+    }
+
     activePh = ph;
     activeEp = last;
+    activeStart = data.hours[startIdx];
     break;
   }
 
   if (activePh && activeEp) {
-    const start = fmtStart(activeEp.hour, CONFIG.timezone);
+    const start = fmtStart(activeStart.hour, CONFIG.timezone);
     return `<div class="live-banner active">
       <span class="live-dot"></span>
       <span class="live-text">
