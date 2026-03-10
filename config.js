@@ -63,11 +63,38 @@ const CONFIG = {
       ],
     },
 
-    // ── Exemple future station ──────────────────────────────────
-    // {
-    //   id: 123,
-    //   name: "Autre spot",
-    //   phenomena: [ ... ]
-    // },
+    {
+      id: "31042012",
+      name: "Luchon MF",
+      description: "Station Météo-France 31042012",
+      source: "meteofrance",
+
+      phenomena: [
+        {
+          id: "brise",
+          name: "Brise",
+          color: "#38bdf8",
+          icon: "↑",
+          hours: [11, 18],
+          direction: 25,
+          tolerance: 20,
+          speed_avg_min: 10,
+          duration_min: 15,
+          gap_max: 20,
+        },
+        {
+          id: "rentree_sud",
+          name: "Rentrée Sud",
+          color: "#fb923c",
+          icon: "↓",
+          hours: null,
+          direction: 180,
+          tolerance: 45,
+          speed_avg_min: 20,
+          duration_min: 0,
+          gap_max: 20,
+        },
+      ],
+    },
   ],
 };

@@ -15,7 +15,9 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR  = path.join(__dirname, "data");
-const API_BASE  = "http://api.pioupiou.fr/v1/archive";
+const API_BASE     = "http://api.pioupiou.fr/v1/archive";
+const MF_API_BASE  = "https://public-api.meteofrance.fr/public/DPObs/v1/station/infrahoraire-6m";
+const MF_API_KEY   = process.env.MF_API_KEY;
 const HISTORY_DAYS = 60;
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -101,6 +103,77 @@ function circularMean(angles) {
   return (deg + 360) % 360;
 }
 
+// ── Fetch Météo-France ────────────────────────────────────────
+// L'API DPObs infrahoraire-6m retourne des mesures toutes les 6 min
+// Format réponse : tableau d'objets avec date_obs, ff (vent moy m/s),
+// fx (rafale m/s), dd (direction °)
+
+async function fetchMFChunk(stationId, start, stop) {
+  // L'API accepte max ~24h par requête, on découpe par tranches de 24h
+  const dateStr = d => d.toISOString().replace(/\.\d{3}Z$/, "Z");
+  const url = `${MF_API_BASE}?id_station=${stationId}&date=${dateStr(start)}&date_fin=${dateStr(stop)}&format=json&apikey=${MF_API_KEY}`;
+  console.log(`  GET MF ${url.replace(MF_API_KEY, "***")}`);
+  const res = await fetch(url);
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(`MF API error ${res.status}: ${txt.slice(0, 200)}`);
+  }
+  const json = await res.json();
+  // La réponse est un tableau directement ou dans .observations
+  return Array.isArray(json) ? json : (json.observations || []);
+}
+
+async function fetchAllMF(stationId, fromDate, toDate) {
+  const CHUNK_MS = 24 * 3600 * 1000; // 24h par requête
+  let rows = [];
+  let cursor = new Date(fromDate);
+
+  while (cursor < toDate) {
+    const chunkEnd = new Date(Math.min(cursor.getTime() + CHUNK_MS, toDate.getTime()));
+    const chunk = await fetchMFChunk(stationId, cursor, chunkEnd);
+    rows = rows.concat(chunk);
+    cursor = chunkEnd;
+    await new Promise(r => setTimeout(r, 300));
+  }
+  return rows;
+}
+
+function aggregateMF(rows) {
+  // Chaque obs MF : { date_obs, ff (m/s moy), fx (m/s rafale), dd (°) }
+  // On agrège en buckets 15min, on convertit m/s → km/h
+  const buckets = {};
+
+  for (const r of rows) {
+    if (!r.date_obs) continue;
+    const t = new Date(r.date_obs);
+    const q = Math.floor(t.getUTCMinutes() / 15) * 15;
+    const pad = n => String(n).padStart(2, "0");
+    const key = `${t.getUTCFullYear()}-${pad(t.getUTCMonth()+1)}-${pad(t.getUTCDate())}T${pad(t.getUTCHours())}:${pad(q)}`;
+
+    if (!buckets[key]) buckets[key] = { sum_avg: 0, max_avg: 0, max_gust: 0, headings: [], count: 0 };
+    const b = buckets[key];
+
+    const ff = (r.ff != null) ? r.ff * 3.6 : 0;   // m/s → km/h
+    const fx = (r.fx != null) ? r.fx * 3.6 : ff;
+    b.sum_avg += ff;
+    b.max_avg  = Math.max(b.max_avg, ff);
+    b.max_gust = Math.max(b.max_gust, fx);
+    if (r.dd != null) b.headings.push(r.dd);
+    b.count++;
+  }
+
+  return Object.entries(buckets)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([hour, b]) => ({
+      hour,
+      speed_avg:     Math.round(b.sum_avg / b.count * 10) / 10,
+      speed_max_avg: Math.round(b.max_avg * 10) / 10,
+      speed_gust:    Math.round(b.max_gust * 10) / 10,
+      heading:       b.headings.length ? Math.round(circularMean(b.headings)) : null,
+      n: b.count,
+    }));
+}
+
 // ── Main ───────────────────────────────────────────────────────
 
 // Lire CONFIG inline (le fichier config.js utilise const CONFIG = {...})
@@ -134,8 +207,9 @@ for (const station of CONFIG.stations) {
   if (existing.hours && existing.hours.length > 0) {
     // On repart de la dernière heure connue
     const lastHour = existing.hours[existing.hours.length - 1].hour;
+    // lastHour format "2026-01-15T14:30" → ajouter ":00Z" pour avoir une date valide
     fromDate = new Date(lastHour + ":00Z");
-    fromDate.setMinutes(fromDate.getMinutes() + 15); // +15min pour ne pas re-fetcher le dernier quart
+    fromDate = new Date(fromDate.getTime() + 15 * 60 * 1000); // +15min
     console.log(`Station ${station.id}: mise à jour depuis ${fromDate.toISOString()}`);
   } else {
     fromDate = new Date(now.getTime() - CONFIG.history_days * 24 * 3600 * 1000);
@@ -148,11 +222,18 @@ for (const station of CONFIG.stations) {
   }
 
   try {
-    const rawRows = await fetchAll(station.id, fromDate, now);
-    console.log(`  → ${rawRows.length} mesures brutes récupérées`);
+    let rawRows, newHours;
 
-    const newHours = aggregateHourly(rawRows);
-    console.log(`  → ${newHours.length} heures agrégées`);
+    if (station.source === "meteofrance") {
+      rawRows = await fetchAllMF(station.id, fromDate, now);
+      console.log(`  → ${rawRows.length} observations MF récupérées`);
+      newHours = aggregateMF(rawRows);
+    } else {
+      rawRows = await fetchAll(station.id, fromDate, now);
+      console.log(`  → ${rawRows.length} mesures brutes récupérées`);
+      newHours = aggregateHourly(rawRows);
+    }
+    console.log(`  → ${newHours.length} quarts d'heure agrégés`);
 
     // Fusionner avec l'existant (les nouvelles heures remplacent / complètent)
     const hourMap = {};
