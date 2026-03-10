@@ -3,7 +3,7 @@ name: Fetch Pioupiou Data
 on:
   # Toutes les nuits à 3h UTC
   schedule:
-    - cron: "0 * * * *"
+    - cron: "*/15 * * * *"
 
   # Déclenchement manuel depuis l'onglet Actions
   workflow_dispatch:
