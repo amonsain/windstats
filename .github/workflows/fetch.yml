@@ -1,28 +1,39 @@
 name: Fetch Pioupiou Data
 
 on:
+  # Toutes les nuits à 3h UTC
   schedule:
     - cron: "0 3 * * *"
+
+  # Déclenchement manuel depuis l'onglet Actions
   workflow_dispatch:
 
 jobs:
   fetch:
     runs-on: ubuntu-latest
+
     permissions:
-      contents: write
+      contents: write   # pour pouvoir committer data/*.json
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+
       - name: Fetch & aggregate data
         run: node fetch-data.js
+        env:
+          MF_API_KEY: ${{ secrets.MF_API_KEY }}
+
       - name: Commit updated data files
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/
+          # Ne committe que si quelque chose a changé
           git diff --staged --quiet || git commit -m "chore: update wind data $(date -u '+%Y-%m-%d %H:%M') UTC"
           git push
