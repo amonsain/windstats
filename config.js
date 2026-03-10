@@ -29,8 +29,8 @@ const CONFIG = {
           hours: [11, 18],
 
           // Direction centrale en degrés + tolérance ±
-          direction: 0,           // Nord
-          tolerance: 15,          // ± 15° → accepte 345°–015°
+          direction: 25,          // NNE (brise réelle Luchon)
+          tolerance: 20,          // ± 20° → accepte 5°–45°
 
           // Seuils vitesse (km/h)
           speed_avg_min: 10,
