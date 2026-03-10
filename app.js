@@ -402,9 +402,9 @@ function renderEpisodeTable(ph, episodes) {
           <th>Jour</th>
           <th>Début</th>
           <th>Durée</th>
-          <th>Moy</th>
-          <th>Max moy</th>
-          <th>Rafale</th>
+          <th>Moy episode</th>
+          <th>Max moy 15min</th>
+          <th>Rafale max</th>
         </tr>
       </thead>
       <tbody>`;
