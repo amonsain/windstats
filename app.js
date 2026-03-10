@@ -372,9 +372,11 @@ function renderCalendar(station, calendar) {
         const start   = fmtStart(ep.start_hour, CONFIG.timezone);
         const vmax    = ep.speed_avg_max;
         const tooltip = ph.name + " · début " + start + " · max " + vmax + " km/h";
+        const gust = ep.speed_gust_max;
         return `<span class="pill" style="--pill-color:${ph.color}" title="${tooltip}">` +
                `<span class="pill-time">${start}</span>` +
                `<span class="pill-vmax">${vmax}</span>` +
+               `<span class="pill-gust">${gust}</span>` +
                `</span>`;
       })
       .join("");
