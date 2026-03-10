@@ -233,16 +233,25 @@ function renderStationShell(container, station) {
   el.className = "station";
   el.id = `station-${station.id}`;
   el.innerHTML = `
-    <h2 class="station-title">
+    <h2 class="station-title" onclick="toggleStation('${station.id}')">
       <span class="station-name">${station.name}</span>
       <span class="station-id">PP${station.id}</span>
+      <span class="station-chevron" id="chevron-${station.id}">▸</span>
     </h2>
+    <div id="live-${station.id}" class="station-live">Chargement…</div>
     <p class="error-msg" id="error-${station.id}"></p>
-    <div class="station-body" id="body-${station.id}">
+    <div class="station-body collapsed" id="body-${station.id}">
       <div class="loading">Chargement…</div>
     </div>
   `;
   container.appendChild(el);
+}
+
+function toggleStation(id) {
+  const body = document.getElementById(`body-${id}`);
+  const chevron = document.getElementById(`chevron-${id}`);
+  const collapsed = body.classList.toggle("collapsed");
+  chevron.textContent = collapsed ? "▸" : "▾";
 }
 
 
@@ -332,14 +341,17 @@ function renderLiveBanner(station, data) {
 
 function renderStation(station, data, episodesByPhenomenon, statsByPhenomenon, calendar) {
   const body = document.getElementById(`body-${station.id}`);
+  const liveEl = document.getElementById(`live-${station.id}`);
+
+  // Encart live toujours visible
+  liveEl.innerHTML = renderLiveBanner(station, data);
 
   const updatedStr = data.updated
     ? new Date(data.updated).toLocaleString("fr-FR", { timeZone: CONFIG.timezone,
         day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
     : "—";
 
-  let html = renderLiveBanner(station, data);
-  html += `<p class="updated">Données au ${updatedStr} · ${data.hours.length} heures</p>`;
+  let html = `<p class="updated">Données au ${updatedStr} · ${data.hours.length} heures</p>`;
 
   // ── Stats cards par phénomène
   const lastMeasure = data.hours.length > 0 ? data.hours[data.hours.length - 1] : null;
@@ -383,23 +395,31 @@ function renderStation(station, data, episodesByPhenomenon, statsByPhenomenon, c
 }
 
 function renderPhenomenonCard(ph, stats, lastMeasure) {
+  const id = `ph-body-${ph.id}-${Math.random().toString(36).slice(2)}`;
   const freshStr = lastMeasure
-    ? `<div class="ph-fresh">${fmtStart(lastMeasure.hour, CONFIG.timezone)} · ${lastMeasure.speed_avg} km/h ${lastMeasure.heading}°</div>`
+    ? `<span class="ph-fresh-inline">${fmtStart(lastMeasure.hour, CONFIG.timezone)} · ${lastMeasure.speed_avg} km/h · ${lastMeasure.heading}°</span>`
     : "";
+
+  const header = `
+    <div class="ph-header" onclick="this.closest('.ph-card').classList.toggle('open')">
+      <span class="ph-icon">${ph.icon}</span>
+      <span class="ph-name">${ph.name}</span>
+      ${freshStr}
+      <span class="ph-chevron">▸</span>
+    </div>`;
 
   if (!stats) return `
     <div class="ph-card" style="--ph-color:${ph.color}">
-      <div class="ph-icon">${ph.icon}</div>
-      <div class="ph-name">${ph.name}</div>
-      ${freshStr}
-      <div class="ph-nodata">Aucun épisode détecté</div>
+      ${header}
+      <div class="ph-body">
+        <div class="ph-nodata">Aucun épisode détecté</div>
+      </div>
     </div>`;
 
   return `
     <div class="ph-card" style="--ph-color:${ph.color}">
-      <div class="ph-icon">${ph.icon}</div>
-      <div class="ph-name">${ph.name}</div>
-      ${freshStr}
+      ${header}
+      <div class="ph-body">
       <div class="ph-stats">
         <div class="stat-row">
           <span class="stat-label">Épisodes</span>
@@ -429,6 +449,7 @@ function renderPhenomenonCard(ph, stats, lastMeasure) {
           <span class="stat-label">Rafale max</span>
           <span class="stat-val">${stats.speed_gust_max} km/h</span>
         </div>
+      </div>
       </div>
     </div>`;
 }

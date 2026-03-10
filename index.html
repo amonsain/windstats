@@ -149,26 +149,63 @@
       border: 1px solid var(--border);
       border-top: 3px solid var(--ph-color);
       border-radius: 8px;
-      padding: 1.2rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.8rem;
+      overflow: hidden;
       transition: transform 0.15s;
     }
 
-    .ph-card:hover { transform: translateY(-2px); }
+    .ph-header {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.8rem 1rem;
+      cursor: pointer;
+      user-select: none;
+      flex-wrap: wrap;
+    }
+
+    .ph-header:hover { background: rgba(255,255,255,0.03); }
+
+    .ph-chevron {
+      margin-left: auto;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      transition: transform 0.2s;
+    }
+
+    .ph-card.open .ph-chevron { transform: rotate(90deg); }
+
+    .ph-body {
+      display: none;
+      padding: 0 1rem 1rem;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .ph-card.open .ph-body { display: flex; }
 
     .ph-icon {
-      font-size: 1.6rem;
+      font-size: 1.2rem;
       color: var(--ph-color);
       line-height: 1;
+      flex-shrink: 0;
     }
 
     .ph-name {
       font-family: "Syne", sans-serif;
       font-weight: 600;
-      font-size: 1rem;
+      font-size: 0.9rem;
       color: #fff;
+      flex-shrink: 0;
+    }
+
+    .ph-fresh-inline {
+      font-size: 0.62rem;
+      font-family: var(--mono);
+      color: var(--text-dim);
+      background: rgba(255,255,255,0.04);
+      border-radius: 3px;
+      padding: 2px 5px;
+      white-space: nowrap;
     }
 
     .ph-nodata {
@@ -334,18 +371,6 @@
     }
 
     /* ── En cours ─────────────────────────────────────────────── */
-    .ph-fresh {
-      font-size: 0.62rem;
-      font-family: var(--mono);
-      color: var(--text-dim);
-      background: rgba(255,255,255,0.04);
-      border-radius: 3px;
-      padding: 2px 6px;
-      margin-bottom: 4px;
-      text-align: center;
-      width: 100%;
-    }
-
     .live-banner {
       display: flex;
       align-items: center;
@@ -411,6 +436,29 @@
     .ep-table tr:hover td { background: rgba(255,255,255,0.025); }
 
     .ep-table .gust { color: #fbbf24; }
+
+    .station-title {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .station-title:hover .station-name {
+      opacity: 0.8;
+    }
+
+    .station-chevron {
+      font-size: 0.9rem;
+      color: var(--text-dim);
+      margin-left: auto;
+    }
+
+    .station-live {
+      margin-bottom: 0.5rem;
+    }
+
+    .station-body.collapsed {
+      display: none;
+    }
 
     /* ── Responsive ───────────────────────────────────────────── */
     @media (max-width: 600px) {
