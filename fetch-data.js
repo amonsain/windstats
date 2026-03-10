@@ -146,8 +146,9 @@ function aggregateMF(rows) {
   const buckets = {};
 
   for (const r of rows) {
-    if (!r.date_obs) continue;
-    const t = new Date(r.date_obs);
+    const dateField = r.validity_time || r.date_obs || r.dateObs || r.date;
+    if (!dateField) continue;
+    const t = new Date(dateField);
     const q = Math.floor(t.getUTCMinutes() / 15) * 15;
     const pad = n => String(n).padStart(2, "0");
     const key = `${t.getUTCFullYear()}-${pad(t.getUTCMonth()+1)}-${pad(t.getUTCDate())}T${pad(t.getUTCHours())}:${pad(q)}`;
