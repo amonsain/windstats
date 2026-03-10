@@ -364,16 +364,26 @@ function renderCalendar(station, calendar) {
 
   for (const day of days) {
     const events = calendar[day] || {};
-    const dots = station.phenomena
+    const pills = station.phenomena
       .filter(ph => events[ph.id]?.length > 0)
-      .map(ph => `<span class="dot" style="background:${ph.color}" title="${ph.name}"></span>`)
+      .map(ph => {
+        const eps = events[ph.id];
+        const ep  = eps.reduce((a, b) => a.start_hour < b.start_hour ? a : b);
+        const start   = fmtStart(ep.start_hour, CONFIG.timezone);
+        const vmax    = ep.speed_avg_max;
+        const tooltip = ph.name + " · début " + start + " · max " + vmax + " km/h";
+        return `<span class="pill" style="--pill-color:${ph.color}" title="${tooltip}">` +
+               `<span class="pill-time">${start}</span>` +
+               `<span class="pill-vmax">${vmax}</span>` +
+               `</span>`;
+      })
       .join("");
 
     const hasEvent = Object.keys(events).length > 0;
-    html += `<div class="cal-day ${hasEvent ? "has-event" : ""}">
-      <span class="cal-date">${day.slice(0, 5)}</span>
-      <div class="cal-dots">${dots}</div>
-    </div>`;
+    html += `<div class="cal-day ${hasEvent ? "has-event" : ""}">` +
+            `<span class="cal-date">${day.slice(0, 5)}</span>` +
+            `<div class="cal-pills">${pills}</div>` +
+            `</div>`;
   }
 
   html += `</div></div>`;
@@ -402,9 +412,9 @@ function renderEpisodeTable(ph, episodes) {
           <th>Jour</th>
           <th>Début</th>
           <th>Durée</th>
-          <th>Moy episode</th>
-          <th>Max moy 15min</th>
-          <th>Rafale max</th>
+          <th>Moy</th>
+          <th>Max 15min</th>
+          <th>Rafale</th>
         </tr>
       </thead>
       <tbody>`;

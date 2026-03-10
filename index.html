@@ -258,7 +258,7 @@
 
     .calendar-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
       gap: 4px;
     }
 
@@ -285,17 +285,36 @@
       color: var(--text-dim);
     }
 
-    .cal-dots {
+    .cal-pills {
       display: flex;
+      flex-direction: column;
       gap: 2px;
-      flex-wrap: wrap;
-      justify-content: center;
+      width: 100%;
     }
 
-    .dot {
-      display: inline-block;
-      width: 6px; height: 6px;
-      border-radius: 50%;
+    .pill {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: color-mix(in srgb, var(--pill-color) 20%, transparent);
+      border: 1px solid color-mix(in srgb, var(--pill-color) 50%, transparent);
+      border-radius: 3px;
+      padding: 1px 4px;
+      cursor: default;
+    }
+
+    .pill-time {
+      font-size: 0.6rem;
+      font-family: var(--mono);
+      color: var(--pill-color);
+      letter-spacing: -0.02em;
+    }
+
+    .pill-vmax {
+      font-size: 0.6rem;
+      font-family: var(--mono);
+      color: var(--text-dim);
+      margin-left: 3px;
     }
 
     /* ── Episode table ────────────────────────────────────────── */
