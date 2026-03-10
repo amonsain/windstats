@@ -33,7 +33,7 @@ const CONFIG = {
           tolerance: 20,          // ± 20° → accepte 5°–45°
 
           // Seuils vitesse (km/h)
-          speed_avg_min: 10,
+          speed_avg_min: 17,
 
           // Durée minimale pour valider un épisode (minutes)
           duration_min: 15,
