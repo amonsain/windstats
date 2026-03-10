@@ -274,22 +274,28 @@ function renderLiveBanner(station, data) {
     if (last.speed_avg < speed_avg_min) continue;
 
     // Remonter pour trouver le vrai début de l'épisode
-    const STEP_MS = 15 * 60 * 1000;
+    // On tolère gap_max comme dans la détection : un bucket raté ne coupe pas si l'écart <= gap_max
     const maxGap = gap_max || 15;
     let startIdx = data.hours.length - 1;
+    let missedStreak = 0; // buckets consécutifs ne satisfaisant pas les conditions
     for (let i = data.hours.length - 2; i >= 0; i--) {
       const h = data.hours[i];
       const next = data.hours[i + 1];
       const gapMin = (parseHourStr(next.hour) - parseHourStr(h.hour)) / 60000;
-      if (gapMin > maxGap) break;
+      if (gapMin > maxGap) break; // vrai trou de données
       const hlh = localHour(h.hour, CONFIG.timezone);
-      if (hourWindow) {
-        const [from, to] = hourWindow;
-        if (hlh < from || hlh >= to) break;
+      const inWindow = !hourWindow || (hlh >= hourWindow[0] && hlh < hourWindow[1]);
+      const matches = inWindow &&
+                      inDirectionRange(h.heading, direction, tolerance) &&
+                      h.speed_avg >= speed_avg_min;
+      if (matches) {
+        startIdx = i;
+        missedStreak = 0;
+      } else {
+        missedStreak++;
+        // Tolérer jusqu'à gap_max/15 buckets consécutifs manqués
+        if (missedStreak * 15 > maxGap) break;
       }
-      if (!inDirectionRange(h.heading, direction, tolerance)) break;
-      if (h.speed_avg < speed_avg_min) break;
-      startIdx = i;
     }
 
     activePh = ph;
