@@ -403,7 +403,7 @@ function renderEpisodeTable(ph, episodes) {
           <th>Début</th>
           <th>Durée</th>
           <th>Moy</th>
-          <th>Max moy</th>
+          <th>Max 15min</th>
           <th>Rafale</th>
         </tr>
       </thead>

@@ -33,13 +33,13 @@ const CONFIG = {
           tolerance: 20,          // ± 20° → accepte 5°–45°
 
           // Seuils vitesse (km/h)
-          speed_avg_min: 10,
+          speed_avg_min: 15,
 
           // Durée minimale pour valider un épisode (minutes)
           duration_min: 15,
 
           // Durée max d'un "trou" autorisé dans un épisode (minutes)
-          gap_max: 20,
+          gap_max: 32,
         },
 
         {
@@ -58,7 +58,7 @@ const CONFIG = {
           speed_avg_min: 20,
 
           duration_min: 0,        // pas de durée mini : on note dès que ça pointe
-          gap_max: 20,
+          gap_max: 32,
         },
       ],
     },
@@ -78,9 +78,9 @@ const CONFIG = {
           hours: [11, 18],
           direction: 25,
           tolerance: 20,
-          speed_avg_min: 10,
+          speed_avg_min: 16,
           duration_min: 15,
-          gap_max: 20,
+          gap_max: 32,
         },
         {
           id: "rentree_sud",
@@ -92,7 +92,7 @@ const CONFIG = {
           tolerance: 45,
           speed_avg_min: 20,
           duration_min: 0,
-          gap_max: 20,
+          gap_max: 32,
         },
       ],
     },
