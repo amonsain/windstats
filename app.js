@@ -19,17 +19,29 @@ function inDirectionRange(heading, center, tolerance) {
 // ── Helpers heure locale ───────────────────────────────────────
 
 /**
- * Retourne l'heure locale (0–23) d'une string "2026-01-15T14" (UTC)
+ * Parse une clé d'agrégat (format "2026-01-15T14" ou "2026-01-15T14:30") en Date UTC
+ */
+function parseHourStr(hourStr) {
+  // Ajouter ":00Z" si pas de secondes, ":00:00Z" si pas de minutes
+  const parts = hourStr.split("T");
+  const timeParts = (parts[1] || "").split(":");
+  if (timeParts.length === 1) return new Date(hourStr + ":00:00Z"); // ancien format "T14"
+  if (timeParts.length === 2) return new Date(hourStr + ":00Z");    // nouveau format "T14:30"
+  return new Date(hourStr + "Z");
+}
+
+/**
+ * Retourne l'heure locale (0–23) d'une string "2026-01-15T14:30" (UTC)
  */
 function localHour(hourStr, timezone) {
-  const d = new Date(hourStr + ":00:00Z");
+  const d = parseHourStr(hourStr);
   return parseInt(
     d.toLocaleString("fr-FR", { timeZone: timezone, hour: "numeric", hour12: false })
   );
 }
 
 function localDateLabel(hourStr, timezone) {
-  const d = new Date(hourStr + ":00:00Z");
+  const d = parseHourStr(hourStr);
   return d.toLocaleString("fr-FR", {
     timeZone: timezone,
     day: "2-digit", month: "2-digit",
@@ -37,7 +49,7 @@ function localDateLabel(hourStr, timezone) {
 }
 
 function localDayKey(hourStr, timezone) {
-  const d = new Date(hourStr + ":00:00Z");
+  const d = parseHourStr(hourStr);
   return d.toLocaleDateString("fr-FR", {
     timeZone: timezone,
     year: "numeric", month: "2-digit", day: "2-digit",
@@ -70,16 +82,17 @@ function detectEpisodes(hours, phenomenon, timezone) {
 
   if (matching.length === 0) return [];
 
-  // Grouper en épisodes contigus (gap_max en minutes, ici nos buckets sont horaires = 60 min)
+  // Grouper en épisodes contigus — buckets 15 min
+  const BUCKET_MIN = 15;
   const episodes = [];
   let current = [matching[0]];
 
   for (let i = 1; i < matching.length; i++) {
-    const prev = new Date(matching[i-1].hour + ":00:00Z");
-    const curr = new Date(matching[i].hour   + ":00:00Z");
+    const prev = parseHourStr(matching[i-1].hour);
+    const curr = parseHourStr(matching[i].hour);
     const gapMin = (curr - prev) / 60000;
 
-    if (gapMin <= (gap_max || 60)) {
+    if (gapMin <= (gap_max || BUCKET_MIN)) {
       current.push(matching[i]);
     } else {
       episodes.push(current);
@@ -91,7 +104,7 @@ function detectEpisodes(hours, phenomenon, timezone) {
   // Calculer les stats de chaque épisode
   return episodes
     .filter(ep => {
-      const dMin = (ep.length - 1) * 60; // durée en minutes (buckets horaires)
+      const dMin = ep.length * BUCKET_MIN;
       return dMin >= (duration_min || 0);
     })
     .map(ep => {
@@ -102,6 +115,7 @@ function detectEpisodes(hours, phenomenon, timezone) {
 
       const avgSpeeds  = ep.map(h => h.speed_avg);
       const gustSpeeds = ep.map(h => h.speed_gust);
+      const durationH  = Math.round(ep.length * BUCKET_MIN / 60 * 10) / 10;
 
       return {
         phenomenon:    phenomenon.id,
@@ -109,11 +123,11 @@ function detectEpisodes(hours, phenomenon, timezone) {
         start_hour:    startH,
         end_hour:      endH,
         local_hour_start: lh,
-        duration_h:    ep.length,         // nb heures
+        duration_h:    durationH,
         speed_avg:     avg(avgSpeeds),
         speed_avg_max: Math.max(...avgSpeeds),
         speed_gust_max:Math.max(...gustSpeeds),
-        hourly:        ep,                // détail heure par heure
+        hourly:        ep,
       };
     });
 }
