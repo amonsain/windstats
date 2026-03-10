@@ -427,8 +427,7 @@ function renderCalendar(station, calendar) {
         const gust = ep.speed_gust_max;
         return `<span class="pill" style="--pill-color:${ph.color}" title="${tooltip}">` +
                `<span class="pill-time">${start}</span>` +
-               `<span class="pill-vmax">${vmax}</span>` +
-               `<span class="pill-gust">${gust}</span>` +
+               `<span class="pill-row2"><span class="pill-vmax">${vmax}</span><span class="pill-gust">${gust}</span></span>` +
                `</span>`;
       })
       .join("");
