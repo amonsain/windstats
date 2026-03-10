@@ -245,6 +245,57 @@ function renderStationShell(container, station) {
   container.appendChild(el);
 }
 
+
+// ── Encart "épisode en cours" ──────────────────────────────
+
+function renderLiveBanner(station, data) {
+  const now = new Date();
+  // Prendre la dernière mesure du JSON
+  if (!data.hours || data.hours.length === 0) return "";
+
+  const last = data.hours[data.hours.length - 1];
+  const lastTime = parseHourStr(last.hour);
+  // Si la dernière mesure a plus de 2h, données trop vieilles
+  const ageH = (now - lastTime) / 3600000;
+  if (ageH > 2) return "";
+
+  let activeEp = null;
+  let activePh = null;
+
+  for (const ph of station.phenomena) {
+    const { direction, tolerance, speed_avg_min, hours: hourWindow } = ph;
+    const lh = localHour(last.hour, CONFIG.timezone);
+    if (hourWindow) {
+      const [from, to] = hourWindow;
+      if (lh < from || lh >= to) continue;
+    }
+    if (!inDirectionRange(last.heading, direction, tolerance)) continue;
+    if (last.speed_avg < speed_avg_min) continue;
+    activePh = ph;
+    activeEp = last;
+    break;
+  }
+
+  if (activePh && activeEp) {
+    const start = fmtStart(activeEp.hour, CONFIG.timezone);
+    return `<div class="live-banner active">
+      <span class="live-dot"></span>
+      <span class="live-text">
+        <strong>${activePh.icon} ${activePh.name} en cours</strong>
+        · depuis ${start}
+        · ${activeEp.speed_avg} km/h moy
+        · <span style="color:#ff6b6b">${activeEp.speed_gust} km/h rafale</span>
+        · ${activeEp.heading}°
+      </span>
+    </div>`;
+  } else {
+    return `<div class="live-banner">
+      <span class="live-dot"></span>
+      <span class="live-text">Pas d'épisode en cours</span>
+    </div>`;
+  }
+}
+
 function renderStation(station, data, episodesByPhenomenon, statsByPhenomenon, calendar) {
   const body = document.getElementById(`body-${station.id}`);
 
@@ -253,7 +304,8 @@ function renderStation(station, data, episodesByPhenomenon, statsByPhenomenon, c
         day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
     : "—";
 
-  let html = `<p class="updated">Données au ${updatedStr} · ${data.hours.length} heures</p>`;
+  let html = renderLiveBanner(station, data);
+  html += `<p class="updated">Données au ${updatedStr} · ${data.hours.length} heures</p>`;
 
   // ── Stats cards par phénomène
   html += `<div class="phenomena-grid">`;
