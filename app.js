@@ -380,31 +380,43 @@ function renderCalendar(station, calendar) {
   return html;
 }
 
+function fmtStart(hourStr, timezone) {
+  // Affiche "14h30" depuis "2026-01-15T14:30"
+  const d = parseHourStr(hourStr);
+  const hh = d.toLocaleString("fr-FR", { timeZone: timezone, hour: "2-digit", hour12: false });
+  const mm = d.toLocaleString("fr-FR", { timeZone: timezone, minute: "2-digit" });
+  return `${hh}h${mm.padStart(2,"0")}`;
+}
+
 function renderEpisodeTable(ph, episodes) {
   if (!episodes || episodes.length === 0) return "";
 
-  const recent = [...episodes].reverse().slice(0, 20);
+  // Épisodes groupés, les plus récents en premier
+  const recent = [...episodes].reverse().slice(0, 30);
 
   let html = `<div class="episode-section">
-    <h3 class="section-title" style="color:${ph.color}">${ph.name} — 20 derniers épisodes</h3>
+    <h3 class="section-title" style="color:${ph.color}">${ph.name} — épisodes récents</h3>
     <table class="ep-table">
       <thead>
         <tr>
           <th>Jour</th>
           <th>Début</th>
           <th>Durée</th>
-          <th>Moy km/h</th>
+          <th>Moy</th>
           <th>Max moy</th>
-          <th>Rafale max</th>
+          <th>Rafale</th>
         </tr>
       </thead>
       <tbody>`;
 
   for (const ep of recent) {
+    const durStr = ep.duration_h < 1
+      ? `${Math.round(ep.duration_h * 60)}min`
+      : `${ep.duration_h}h`;
     html += `<tr>
       <td>${ep.day}</td>
-      <td>${ep.local_hour_start}h00</td>
-      <td>${ep.duration_h}h</td>
+      <td>${fmtStart(ep.start_hour, CONFIG.timezone)}</td>
+      <td>${durStr}</td>
       <td>${ep.speed_avg}</td>
       <td>${ep.speed_avg_max}</td>
       <td class="gust">${ep.speed_gust_max}</td>
