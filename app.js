@@ -306,14 +306,20 @@ function renderLiveBanner(station, data) {
 
   if (activePh && activeEp) {
     const start = fmtStart(activeStart.hour, CONFIG.timezone);
+    // Stats sur tout l'épisode depuis startIdx
+    const epHours = data.hours.slice(data.hours.indexOf(activeStart));
+    const avgSpeeds  = epHours.map(h => h.speed_avg).filter(v => v > 0);
+    const gustSpeeds = epHours.map(h => h.speed_gust).filter(v => v > 0);
+    const epAvg      = avgSpeeds.length ? Math.round(avgSpeeds.reduce((a,b)=>a+b,0)/avgSpeeds.length*10)/10 : 0;
+    const epVmax     = avgSpeeds.length ? Math.max(...avgSpeeds) : 0;
+    const epGust     = gustSpeeds.length ? Math.max(...gustSpeeds) : 0;
     return `<div class="live-banner active">
       <span class="live-dot"></span>
       <span class="live-text">
         <strong>${activePh.icon} ${activePh.name} en cours</strong>
         · depuis ${start}
-        · ${activeEp.speed_avg} km/h moy
-        · <span style="color:#ff6b6b">${activeEp.speed_gust} km/h rafale</span>
-        · ${activeEp.heading}°
+        · moy ${epAvg} km/h · max ${epVmax} km/h
+        · <span style="color:#ff6b6b">rafale ${epGust} km/h</span>
       </span>
     </div>`;
   } else {
