@@ -111,9 +111,11 @@ function circularMean(angles) {
 async function fetchMFChunk(stationId, start, stop) {
   // L'API accepte max ~24h par requête, on découpe par tranches de 24h
   const dateStr = d => d.toISOString().replace(/\.\d{3}Z$/, "Z");
-  const url = `${MF_API_BASE}?id_station=${stationId}&date=${dateStr(start)}&date_fin=${dateStr(stop)}&format=json&apikey=${MF_API_KEY}`;
-  console.log(`  GET MF ${url.replace(MF_API_KEY, "***")}`);
-  const res = await fetch(url);
+  const url = `${MF_API_BASE}?id_station=${stationId}&date=${dateStr(start)}&date_fin=${dateStr(stop)}&format=json`;
+  console.log(`  GET MF ${url}`);
+  const res = await fetch(url, {
+    headers: { "apikey": MF_API_KEY }
+  });
   if (!res.ok) {
     const txt = await res.text().catch(() => "");
     throw new Error(`MF API error ${res.status}: ${txt.slice(0, 200)}`);
