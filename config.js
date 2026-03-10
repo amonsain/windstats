@@ -76,7 +76,7 @@ const CONFIG = {
           color: "#38bdf8",
           icon: "↑",
           hours: [11, 18],
-          direction: 25,
+          direction: 0,
           tolerance: 20,
           speed_avg_min: 16,
           duration_min: 15,
