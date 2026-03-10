@@ -7,7 +7,7 @@
 const CONFIG = {
 
   // Nombre de jours d'historique à afficher
-  history_days: 60,
+  history_days: 45,
 
   // Fuseau horaire local pour l'affichage
   timezone: "Europe/Paris",
@@ -33,13 +33,13 @@ const CONFIG = {
           tolerance: 20,          // ± 20° → accepte 5°–45°
 
           // Seuils vitesse (km/h)
-          speed_avg_min: 15,
+          speed_avg_min: 17,
 
           // Durée minimale pour valider un épisode (minutes)
           duration_min: 15,
 
           // Durée max d'un "trou" autorisé dans un épisode (minutes)
-          gap_max: 32,
+          gap_max: 60,
         },
 
         {
@@ -55,14 +55,58 @@ const CONFIG = {
           direction: 180,
           tolerance: 45,
 
-          speed_avg_min: 20,
+          speed_avg_min: 18,
 
           duration_min: 0,        // pas de durée mini : on note dès que ça pointe
-          gap_max: 32,
+          gap_max: 60,
         },
       ],
     },
 
+    {
+      id: 313,
+      name: "Cornudère",
+      description: "Station PP313",
+
+      phenomena: [
+        {
+          id: "brise",
+          name: "Brise",
+          color: "#38bdf8",
+          icon: "↑",
+          hours: [11, 18],
+          direction: 0,
+          tolerance: 20,
+          speed_avg_min: 17,
+          duration_min: 15,
+          gap_max: 60,
+        },
+        {
+          id: "rentree_sud",
+          name: "Rentrée Sud",
+          color: "#fb923c",
+          icon: "↓",
+          hours: null,
+          direction: 180,
+          tolerance: 45,
+          speed_avg_min: 17,
+          duration_min: 15,
+          gap_max: 60,
+        },
+        {
+          id: "rentree_ouest",
+          name: "Rentrée Ouest",
+          color: "#a78bfa",
+          icon: "←",
+          hours: null,
+          direction: 270,
+          tolerance: 45,
+          speed_avg_min: 17,
+          duration_min: 15,
+          gap_max: 60,
+        },
+      ],
+    },
     {
       id: "31042012",
       name: "Luchon MF",
@@ -78,9 +122,9 @@ const CONFIG = {
           hours: [11, 18],
           direction: 0,
           tolerance: 20,
-          speed_avg_min: 16,
+          speed_avg_min: 17,
           duration_min: 15,
-          gap_max: 32,
+          gap_max: 60,
         },
         {
           id: "rentree_sud",
@@ -90,9 +134,9 @@ const CONFIG = {
           hours: null,
           direction: 180,
           tolerance: 45,
-          speed_avg_min: 20,
+          speed_avg_min: 17,
           duration_min: 0,
-          gap_max: 32,
+          gap_max: 60,
         },
       ],
     },

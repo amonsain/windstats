@@ -342,10 +342,11 @@ function renderStation(station, data, episodesByPhenomenon, statsByPhenomenon, c
   html += `<p class="updated">Données au ${updatedStr} · ${data.hours.length} heures</p>`;
 
   // ── Stats cards par phénomène
+  const lastMeasure = data.hours.length > 0 ? data.hours[data.hours.length - 1] : null;
   html += `<div class="phenomena-grid">`;
   for (const ph of station.phenomena) {
     const stats = statsByPhenomenon[ph.id];
-    html += renderPhenomenonCard(ph, stats);
+    html += renderPhenomenonCard(ph, stats, lastMeasure);
   }
   html += `</div>`;
 
@@ -381,11 +382,16 @@ function renderStation(station, data, episodesByPhenomenon, statsByPhenomenon, c
   }
 }
 
-function renderPhenomenonCard(ph, stats) {
+function renderPhenomenonCard(ph, stats, lastMeasure) {
+  const freshStr = lastMeasure
+    ? `<div class="ph-fresh">${fmtStart(lastMeasure.hour, CONFIG.timezone)} · ${lastMeasure.speed_avg} km/h ${lastMeasure.heading}°</div>`
+    : "";
+
   if (!stats) return `
     <div class="ph-card" style="--ph-color:${ph.color}">
       <div class="ph-icon">${ph.icon}</div>
       <div class="ph-name">${ph.name}</div>
+      ${freshStr}
       <div class="ph-nodata">Aucun épisode détecté</div>
     </div>`;
 
@@ -393,6 +399,7 @@ function renderPhenomenonCard(ph, stats) {
     <div class="ph-card" style="--ph-color:${ph.color}">
       <div class="ph-icon">${ph.icon}</div>
       <div class="ph-name">${ph.name}</div>
+      ${freshStr}
       <div class="ph-stats">
         <div class="stat-row">
           <span class="stat-label">Épisodes</span>
