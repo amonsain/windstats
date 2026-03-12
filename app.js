@@ -306,7 +306,7 @@ function renderSparkline(stationId, station, hours24) {
     const gx = (PAD_L + ratio * (W - PAD_L - PAD_R)).toFixed(1);
     const label = `-${h}h`;
     gridLines.push(`<line x1="${gx}" y1="0" x2="${gx}" y2="${H}" stroke="#ffffff" stroke-width="0.5" opacity="0.12"/>`);
-    gridLines.push(`<text x="${gx}" y="${H - 1}" text-anchor="middle" font-size="7" fill="#ffffff" opacity="0.25" font-family="monospace">${label}</text>`);
+    gridLines.push(`<text x="${gx}" y="${H - 2}" text-anchor="middle" font-size="8" fill="#ffffff" opacity="0.6" font-family="monospace">${label}</text>`);
   }
 
   const gustPath = gusts.map((v, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
@@ -323,7 +323,7 @@ function renderSparkline(stationId, station, hours24) {
   // "maintenant" à droite avec label
   const nowX = x(n - 1).toFixed(1);
 
-  return `<svg class="sparkline" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+  return `<svg class="sparkline" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block">
     <defs>
       <linearGradient id="sg-${stationId}" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.3"/>
@@ -332,11 +332,11 @@ function renderSparkline(stationId, station, hours24) {
     </defs>
     ${gridLines.join("")}
     <path d="${areaPath}" fill="url(#sg-${stationId})"/>
-    <path d="${gustPath}" fill="none" stroke="#ff6b6b" stroke-width="1" opacity="0.4"/>
-    <path d="${linePath}" fill="none" stroke="#38bdf8" stroke-width="1.5"/>
+    <path d="${gustPath}" fill="none" stroke="#ff6b6b" stroke-width="1.5" opacity="0.5"/>
+    <path d="${linePath}" fill="none" stroke="#38bdf8" stroke-width="2"/>
     ${dots}
-    <line x1="${nowX}" y1="0" x2="${nowX}" y2="${H - 10}" stroke="#ffffff" stroke-width="1" opacity="0.5"/>
-    <text x="${nowX}" y="${H - 1}" text-anchor="end" font-size="7" fill="#ffffff" opacity="0.5" font-family="monospace">now</text>
+    <line x1="${nowX}" y1="0" x2="${nowX}" y2="${H - 10}" stroke="#ffffff" stroke-width="1" opacity="0.6"/>
+    <text x="${Number(nowX) - 3}" y="${H - 2}" text-anchor="end" font-size="8" fill="#ffffff" opacity="0.7" font-family="monospace">now</text>
   </svg>`;
 }
 
