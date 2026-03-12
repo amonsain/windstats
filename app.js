@@ -234,14 +234,16 @@ function renderStationShell(container, station) {
   el.id = `station-${station.id}`;
   el.innerHTML = `
     <div class="station-header" onclick="toggleStation('${station.id}')">
-      <div class="station-header-top">
-        <span class="station-name">${station.name}</span>
-        <span class="station-id">PP${station.id}</span>
-        <span class="station-chevron" id="chevron-${station.id}">▸</span>
+      <div class="station-header-left">
+        <div class="station-header-top">
+          <span class="station-name">${station.name}</span>
+          <span class="station-id">PP${station.id}</span>
+          <span class="station-chevron" id="chevron-${station.id}">▸</span>
+        </div>
+        <div id="live-${station.id}" class="station-live">Chargement…</div>
+        <div id="ph-summary-${station.id}" class="ph-summary"></div>
       </div>
-      <div id="live-${station.id}" class="station-live">Chargement…</div>
       <div id="spark-${station.id}" class="station-spark"></div>
-      <div id="ph-summary-${station.id}" class="ph-summary"></div>
     </div>
     <p class="error-msg" id="error-${station.id}"></p>
     <div class="station-body collapsed" id="body-${station.id}">
@@ -260,15 +262,24 @@ function toggleStation(id) {
 
 // ── Sparkline 24h ──────────────────────────────────────────────
 
-function dirColor(heading) {
-  if (heading == null) return "#444";
-  // Teinte selon direction : N=bleu, E=vert, S=orange, W=violet
-  const h = ((heading % 360) + 360) % 360;
-  const hue = Math.round(h * 0.8 + 160) % 360; // mapping esthétique
-  return `hsl(${hue},70%,55%)`;
+function phenColorForHour(h, station) {
+  // Retourne la couleur du phénomène actif pour ce bucket, null sinon
+  for (const ph of station.phenomena) {
+    const { direction, tolerance, speed_avg_min, hours: hw, gap_max } = ph;
+    if (h.heading == null || h.speed_avg == null) continue;
+    if (!inDirectionRange(h.heading, direction, tolerance)) continue;
+    if (h.speed_avg < speed_avg_min) continue;
+    if (hw) {
+      const lh = localHour(h.hour, CONFIG.timezone);
+      const [from, to] = hw;
+      if (lh < from || lh >= to) continue;
+    }
+    return ph.color;
+  }
+  return null;
 }
 
-function renderSparkline(stationId, hours24) {
+function renderSparkline(stationId, station, hours24) {
   const W = 320, H = 48, PAD = 2;
   const n = hours24.length;
   if (n < 2) return "";
@@ -280,40 +291,31 @@ function renderSparkline(stationId, hours24) {
   const x = i => PAD + (i / (n - 1)) * (W - PAD * 2);
   const y = v => H - PAD - (v / maxV) * (H - PAD * 2);
 
-  // Ligne gust (arrière-plan, fine)
   const gustPath = gusts.map((v, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
-
-  // Aire vitesse moy
   const areaPath = speeds.map((v, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ")
     + ` L${x(n-1).toFixed(1)},${H} L${x(0).toFixed(1)},${H} Z`;
-
-  // Ligne vitesse moy
   const linePath = speeds.map((v, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
 
-  // Cercles direction colorés (1 toutes les ~4 mesures pour pas surcharger)
-  const step = Math.max(1, Math.floor(n / 20));
-  const dots = hours24
-    .filter((_, i) => i % step === 0)
-    .map((h, j) => {
-      const i = j * step;
-      const cx = x(i).toFixed(1);
-      const cy = y(speeds[i]).toFixed(1);
-      const col = dirColor(h.heading);
-      return `<circle cx="${cx}" cy="${cy}" r="2.5" fill="${col}" opacity="0.9"/>`;
-    }).join("");
+  // Point pour chaque mesure : coloré si phénomène actif, discret sinon
+  const dots = hours24.map((h, i) => {
+    const col = phenColorForHour(h, station);
+    if (!col) return ""; // pas de point si pas d'événement
+    const cx = x(i).toFixed(1);
+    const cy = y(speeds[i]).toFixed(1);
+    return `<circle cx="${cx}" cy="${cy}" r="3" fill="${col}" opacity="0.95"/>`;
+  }).join("");
 
-  // Marqueur "maintenant" (ligne verticale à droite)
   const nowX = x(n - 1).toFixed(1);
 
-  return `<svg class="sparkline" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+  return `<svg class="sparkline" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <linearGradient id="sg-${stationId}" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.35"/>
+        <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.25"/>
         <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.02"/>
       </linearGradient>
     </defs>
     <path d="${areaPath}" fill="url(#sg-${stationId})"/>
-    <path d="${gustPath}" fill="none" stroke="#ff6b6b" stroke-width="1" opacity="0.4"/>
+    <path d="${gustPath}" fill="none" stroke="#ff6b6b" stroke-width="1" opacity="0.35"/>
     <path d="${linePath}" fill="none" stroke="#38bdf8" stroke-width="1.5"/>
     ${dots}
     <line x1="${nowX}" y1="0" x2="${nowX}" y2="${H}" stroke="#ffffff" stroke-width="0.5" opacity="0.2"/>
@@ -418,7 +420,7 @@ function renderStation(station, data, episodesByPhenomenon, statsByPhenomenon, c
   const cutoff24 = new Date(now24.getTime() - 24 * 3600 * 1000);
   const hours24 = data.hours.filter(h => parseHourStr(h.hour) >= cutoff24);
   const sparkEl = document.getElementById(`spark-${station.id}`);
-  if (sparkEl) sparkEl.innerHTML = renderSparkline(station.id, hours24);
+  if (sparkEl) sparkEl.innerHTML = renderSparkline(station.id, station, hours24);
 
   // Résumé phénomènes (condensé, toujours visible)
   const phSummary = document.getElementById(`ph-summary-${station.id}`);
