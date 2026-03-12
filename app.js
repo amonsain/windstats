@@ -240,6 +240,7 @@ function renderStationShell(container, station) {
         <span class="station-chevron" id="chevron-${station.id}">▸</span>
       </div>
       <div id="live-${station.id}" class="station-live">Chargement…</div>
+      <div id="spark-${station.id}" class="station-spark"></div>
       <div id="ph-summary-${station.id}" class="ph-summary"></div>
     </div>
     <p class="error-msg" id="error-${station.id}"></p>
@@ -255,6 +256,68 @@ function toggleStation(id) {
   const chevron = document.getElementById(`chevron-${id}`);
   const collapsed = body.classList.toggle("collapsed");
   chevron.textContent = collapsed ? "▸" : "▾";
+}
+
+// ── Sparkline 24h ──────────────────────────────────────────────
+
+function dirColor(heading) {
+  if (heading == null) return "#444";
+  // Teinte selon direction : N=bleu, E=vert, S=orange, W=violet
+  const h = ((heading % 360) + 360) % 360;
+  const hue = Math.round(h * 0.8 + 160) % 360; // mapping esthétique
+  return `hsl(${hue},70%,55%)`;
+}
+
+function renderSparkline(stationId, hours24) {
+  const W = 320, H = 48, PAD = 2;
+  const n = hours24.length;
+  if (n < 2) return "";
+
+  const speeds = hours24.map(h => h.speed_avg || 0);
+  const gusts  = hours24.map(h => h.speed_gust || 0);
+  const maxV   = Math.max(...gusts, 20);
+
+  const x = i => PAD + (i / (n - 1)) * (W - PAD * 2);
+  const y = v => H - PAD - (v / maxV) * (H - PAD * 2);
+
+  // Ligne gust (arrière-plan, fine)
+  const gustPath = gusts.map((v, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+
+  // Aire vitesse moy
+  const areaPath = speeds.map((v, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ")
+    + ` L${x(n-1).toFixed(1)},${H} L${x(0).toFixed(1)},${H} Z`;
+
+  // Ligne vitesse moy
+  const linePath = speeds.map((v, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+
+  // Cercles direction colorés (1 toutes les ~4 mesures pour pas surcharger)
+  const step = Math.max(1, Math.floor(n / 20));
+  const dots = hours24
+    .filter((_, i) => i % step === 0)
+    .map((h, j) => {
+      const i = j * step;
+      const cx = x(i).toFixed(1);
+      const cy = y(speeds[i]).toFixed(1);
+      const col = dirColor(h.heading);
+      return `<circle cx="${cx}" cy="${cy}" r="2.5" fill="${col}" opacity="0.9"/>`;
+    }).join("");
+
+  // Marqueur "maintenant" (ligne verticale à droite)
+  const nowX = x(n - 1).toFixed(1);
+
+  return `<svg class="sparkline" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="sg-${stationId}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.35"/>
+        <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.02"/>
+      </linearGradient>
+    </defs>
+    <path d="${areaPath}" fill="url(#sg-${stationId})"/>
+    <path d="${gustPath}" fill="none" stroke="#ff6b6b" stroke-width="1" opacity="0.4"/>
+    <path d="${linePath}" fill="none" stroke="#38bdf8" stroke-width="1.5"/>
+    ${dots}
+    <line x1="${nowX}" y1="0" x2="${nowX}" y2="${H}" stroke="#ffffff" stroke-width="0.5" opacity="0.2"/>
+  </svg>`;
 }
 
 
@@ -349,6 +412,13 @@ function renderStation(station, data, episodesByPhenomenon, statsByPhenomenon, c
   // Dernier relevé + encart live (toujours visibles)
   const lastMeasure = data.hours.length > 0 ? data.hours[data.hours.length - 1] : null;
   liveEl.innerHTML = renderLastMeasure(lastMeasure) + renderLiveBanner(station, data);
+
+  // Sparkline 24h (toujours visible)
+  const now24 = new Date();
+  const cutoff24 = new Date(now24.getTime() - 24 * 3600 * 1000);
+  const hours24 = data.hours.filter(h => parseHourStr(h.hour) >= cutoff24);
+  const sparkEl = document.getElementById(`spark-${station.id}`);
+  if (sparkEl) sparkEl.innerHTML = renderSparkline(station.id, hours24);
 
   // Résumé phénomènes (condensé, toujours visible)
   const phSummary = document.getElementById(`ph-summary-${station.id}`);
