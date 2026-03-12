@@ -1,7 +1,7 @@
 name: Fetch Pioupiou Data
 
 on:
-  # Toutes les nuits à 3h UTC
+  # Toutes les 15 minutes
   schedule:
     - cron: "*/15 * * * *"
 
@@ -28,6 +28,7 @@ jobs:
         run: node fetch-data.js
         env:
           MF_API_KEY: ${{ secrets.MF_API_KEY }}
+          MF_CLIM_API_KEY: ${{ secrets.MF_CLIM_API_KEY }}
 
       - name: Commit updated data files
         run: |
@@ -36,4 +37,5 @@ jobs:
           git add data/
           # Ne committe que si quelque chose a changé
           git diff --staged --quiet || git commit -m "chore: update wind data $(date -u '+%Y-%m-%d %H:%M') UTC"
+          git pull --rebase origin master
           git push
