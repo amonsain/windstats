@@ -7,7 +7,7 @@
 const CONFIG = {
 
   // Nombre de jours d'historique à afficher
-  history_days: 45,
+  history_days: 60,
 
   // Fuseau horaire local pour l'affichage
   timezone: "Europe/Paris",
@@ -33,7 +33,7 @@ const CONFIG = {
           tolerance: 20,          // ± 20° → accepte 5°–45°
 
           // Seuils vitesse (km/h)
-          speed_avg_min: 17,
+          speed_avg_min: 10,
 
           // Durée minimale pour valider un épisode (minutes)
           duration_min: 15,
@@ -55,7 +55,7 @@ const CONFIG = {
           direction: 180,
           tolerance: 45,
 
-          speed_avg_min: 18,
+          speed_avg_min: 20,
 
           duration_min: 0,        // pas de durée mini : on note dès que ça pointe
           gap_max: 60,
@@ -78,7 +78,7 @@ const CONFIG = {
           direction: 0,
           tolerance: 20,
           speed_avg_min: 17,
-          duration_min: 30,
+          duration_min: 15,
           gap_max: 60,
         },
         {
@@ -89,8 +89,8 @@ const CONFIG = {
           hours: null,
           direction: 180,
           tolerance: 45,
-          speed_avg_min: 20,
-          duration_min: 30,
+          speed_avg_min: 17,
+          duration_min: 0,
           gap_max: 60,
         },
         {
@@ -101,8 +101,8 @@ const CONFIG = {
           hours: null,
           direction: 270,
           tolerance: 45,
-          speed_avg_min: 19,
-          duration_min: 30,
+          speed_avg_min: 17,
+          duration_min: 0,
           gap_max: 60,
         },
       ],
@@ -134,8 +134,65 @@ const CONFIG = {
           hours: null,
           direction: 180,
           tolerance: 45,
-          speed_avg_min: 18,
+          speed_avg_min: 17,
           duration_min: 0,
+          gap_max: 60,
+        },
+      ],
+    },
+    {
+      id: "65059001",
+      name: "Pic du Midi",
+      description: "Station Météo-France 65059001 — 2877m",
+      source: "meteofrance",
+
+      phenomena: [
+        {
+          id: "flux_nord",
+          name: "N",
+          color: "#38bdf8",
+          icon: "↓",
+          hours: null,
+          direction: 0,
+          tolerance: 45,
+          speed_avg_min: 35,
+          duration_min: 30,
+          gap_max: 60,
+        },
+        {
+          id: "flux_sud",
+          name: "S",
+          color: "#fb923c",
+          icon: "↑",
+          hours: null,
+          direction: 180,
+          tolerance: 45,
+          speed_avg_min: 35,
+          duration_min: 30,
+          gap_max: 60,
+        },
+        {
+          id: "flux_est",
+          name: "E",
+          color: "#4ade80",
+          icon: "←",
+          hours: null,
+          direction: 90,
+          tolerance: 45,
+          speed_avg_min: 35,
+          duration_min: 30,
+          gap_max: 60,
+        },
+        {
+          id: "flux_ouest",
+          name: "O",
+          color: "#a78bfa",
+          icon: "→",
+          hours: null,
+          direction: 270,
+          tolerance: 45,
+          speed_avg_min: 35,
+          duration_min: 30,
           gap_max: 60,
         },
       ],

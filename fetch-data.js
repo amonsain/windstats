@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // ═══════════════════════════════════════════════════════════════
-//  fetch-data.js — GitHub Action : récupère les données Pioupiou
-//  et MF, met à jour data/{stationId}.json
+//  fetch-data.js — GitHub Action
+//  Pioupiou : archive classique
+//  MF : API DPClim (commande async → CSV horaire)
 // ═══════════════════════════════════════════════════════════════
 
 const fs    = require("fs");
@@ -9,10 +10,11 @@ const path  = require("path");
 const https = require("https");
 const http  = require("http");
 
-const DATA_DIR   = path.join(__dirname, "data");
-const MF_API_KEY = process.env.MF_API_KEY;
-const STEP_MS    = 15 * 60 * 1000;
-const MF_WAIT_MS = 620;
+const DATA_DIR        = path.join(__dirname, "data");
+const MF_API_KEY      = process.env.MF_API_KEY;      // DPObs (non utilisé ici)
+const MF_CLIM_API_KEY = process.env.MF_CLIM_API_KEY; // DPClim
+const STEP_MS         = 15 * 60 * 1000;
+const MF_HOST         = "public-api.meteofrance.fr";
 
 // ── Helpers ────────────────────────────────────────────────────
 
@@ -30,19 +32,14 @@ function toHourKey(date) {
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-function httpGetJson(url, headers = {}) {
+function httpGetRaw(hostname, path, headers = {}) {
   return new Promise((resolve, reject) => {
-    const u = new URL(url);
-    const mod = u.protocol === "https:" ? https : http;
-    mod.get({ hostname: u.hostname, path: u.pathname + u.search, headers }, res => {
+    const mod = hostname.startsWith("http://") ? http : https;
+    const host = hostname.replace(/^https?:\/\//, "");
+    mod.get({ hostname: host, path, headers }, res => {
       let body = "";
       res.on("data", c => body += c);
-      res.on("end", () => {
-        if (res.statusCode === 429) return reject(new Error("RATE_LIMIT"));
-        if (res.statusCode !== 200) return reject(new Error(`HTTP ${res.statusCode}: ${body.slice(0,100)}`));
-        try { resolve(JSON.parse(body)); }
-        catch(e) { reject(new Error(`JSON invalide: ${body.slice(0,100)}`)); }
-      });
+      res.on("end", () => resolve({ status: res.statusCode, body }));
     }).on("error", reject);
   });
 }
@@ -57,8 +54,8 @@ async function fetchAllPP(stationId, fromDate, toDate) {
     const end = new Date(Math.min(cursor.getTime() + CHUNK_MS, toDate.getTime()));
     const url = `http://api.pioupiou.fr/v1/archive/${stationId}?start=${isoDate(cursor)}&stop=${isoDate(end)}&format=json`;
     console.log(`  GET PP ${url}`);
-    const json = await httpGetJson(url);
-    rows = rows.concat(json.data || []);
+    const r = await httpGetRaw("api.pioupiou.fr", `/v1/archive/${stationId}?start=${isoDate(cursor)}&stop=${isoDate(end)}&format=json`);
+    try { rows = rows.concat(JSON.parse(r.body).data || []); } catch(e) {}
     cursor = end;
     await sleep(500);
   }
@@ -80,10 +77,10 @@ function aggregatePP(rows) {
   return bucketsToHours(buckets);
 }
 
-// ── Météo-France ───────────────────────────────────────────────
+// ── Météo-France DPObs (incrémental temps réel) ───────────────
 // 1 requête par quart d'heure, clé = date du curseur
 
-async function fetchAllMF(stationId, fromDate, toDate) {
+async function fetchAllMFDPObs(stationId, fromDate, toDate) {
   let cursor = new Date(fromDate);
   const q = Math.round(cursor.getUTCMinutes() / 15) * 15;
   cursor.setUTCMinutes(q, 0, 0);
@@ -96,12 +93,14 @@ async function fetchAllMF(stationId, fromDate, toDate) {
     while (retries < 3) {
       try {
         const iso = isoDate(cursor);
-        const url = `https://public-api.meteofrance.fr/public/DPObs/v1/station/infrahoraire-6m` +
-                    `?id_station=${stationId}&date=${encodeURIComponent(iso)}&format=json`;
-        const data = await httpGetJson(url, { apikey: MF_API_KEY });
-        const rows = Array.isArray(data) ? data : (data ? [data] : []);
-        if (rows.length > 0) {
-          const obs   = rows[0];
+        const p = `/public/DPObs/v1/station/infrahoraire-6m` +
+                  `?id_station=${stationId}&date=${encodeURIComponent(iso)}&format=json`;
+        const r = await httpGetRaw(MF_HOST, p, { apikey: MF_API_KEY });
+        if (r.status === 429) { console.warn("  ⚠ Rate limit, pause 10s..."); await sleep(10000); retries++; continue; }
+        if (r.status !== 200) { console.warn(`  ✗ MF ${iso}: HTTP ${r.status}`); break; }
+        const rows = JSON.parse(r.body);
+        const obs = Array.isArray(rows) ? rows[0] : rows;
+        if (obs) {
           const ff    = parseFloat(obs.ff);
           const fxi10 = parseFloat(obs.fxi10);
           const dd    = parseFloat(obs.dd);
@@ -117,24 +116,13 @@ async function fetchAllMF(stationId, fromDate, toDate) {
           }
         }
         break;
-      } catch(err) {
-        if (err.message === "RATE_LIMIT") {
-          console.warn("  ⚠ Rate limit MF, pause 10s...");
-          await sleep(10000);
-          retries++;
-        } else {
-          console.warn(`  ✗ MF ${cursor.toISOString()}: ${err.message}`);
-          break;
-        }
-      }
+      } catch(err) { console.warn(`  ✗ MF ${cursor.toISOString()}: ${err.message}`); break; }
     }
-
     cursor = new Date(cursor.getTime() + STEP_MS);
     count++;
     if (count % 50 === 0) console.log(`  → ${count} req MF, ${results.length} obs`);
-    await sleep(MF_WAIT_MS);
+    await sleep(620);
   }
-
   return results;
 }
 
@@ -192,20 +180,24 @@ async function main() {
       fromDate = new Date(fromDate.getTime() + STEP_MS);
       console.log(`  Reprise depuis ${fromDate.toISOString()}`);
     } else {
-      fromDate = new Date(now.getTime() - CONFIG.history_days * 24 * 3600 * 1000);
-      console.log(`  Fetch complet depuis ${fromDate.toISOString()}`);
+      // Fetch initial : DPObs rétention ~5 jours, on prend 4 jours
+      const initDays = station.source === "meteofrance" ? 4 : CONFIG.history_days;
+      fromDate = new Date(now.getTime() - initDays * 24 * 3600 * 1000);
+      console.log(`  Fetch initial depuis ${fromDate.toISOString()}`);
     }
 
-    if (fromDate >= now) {
-      console.log("  → Déjà à jour.");
-      continue;
-    }
+    if (fromDate >= now) { console.log("  → Déjà à jour."); continue; }
 
     try {
       let newHours;
 
       if (station.source === "meteofrance") {
-        newHours = await fetchAllMF(station.id, fromDate, now);
+        if (!MF_API_KEY) {
+          console.warn("  ⚠ MF_API_KEY manquant, station ignorée");
+          continue;
+        }
+        // Incrémental : DPObs infrahoraire-6m (1 req/15min, données temps réel)
+        newHours = await fetchAllMFDPObs(station.id, fromDate, now);
         console.log(`  → ${newHours.length} quarts d'heure MF`);
       } else {
         const rawRows = await fetchAllPP(station.id, fromDate, now);
@@ -236,7 +228,6 @@ async function main() {
       process.exit(1);
     }
   }
-
   console.log("\n✅ Terminé.");
 }
 
