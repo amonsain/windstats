@@ -283,7 +283,7 @@ function phenColorForHour(h, station) {
 }
 
 function renderSparkline(stationId, station, hours24) {
-  const W = 320, H = 48, PAD = 2;
+  const W = 400, H = 72, PAD_L = 2, PAD_R = 2, PAD_V = 4;
   const n = hours24.length;
   if (n < 2) return "";
 
@@ -291,37 +291,52 @@ function renderSparkline(stationId, station, hours24) {
   const gusts  = hours24.map(h => h.speed_gust || 0);
   const maxV   = Math.max(...gusts, 20);
 
-  const x = i => PAD + (i / (n - 1)) * (W - PAD * 2);
-  const y = v => H - PAD - (v / maxV) * (H - PAD * 2);
+  const x = i => PAD_L + (i / (n - 1)) * (W - PAD_L - PAD_R);
+  const y = v => H - PAD_V - (v / maxV) * (H - PAD_V * 2);
+
+  // Traits verticaux toutes les 6h
+  const nowTime  = parseHourStr(hours24[n - 1].hour).getTime();
+  const startTime = parseHourStr(hours24[0].hour).getTime();
+  const totalMs  = nowTime - startTime;
+  const gridLines = [];
+  for (let h = 6; h < 24; h += 6) {
+    const t = nowTime - h * 3600 * 1000;
+    if (t <= startTime) continue;
+    const ratio = (t - startTime) / totalMs;
+    const gx = (PAD_L + ratio * (W - PAD_L - PAD_R)).toFixed(1);
+    const label = `-${h}h`;
+    gridLines.push(`<line x1="${gx}" y1="0" x2="${gx}" y2="${H}" stroke="#ffffff" stroke-width="0.5" opacity="0.12"/>`);
+    gridLines.push(`<text x="${gx}" y="${H - 1}" text-anchor="middle" font-size="7" fill="#ffffff" opacity="0.25" font-family="monospace">${label}</text>`);
+  }
 
   const gustPath = gusts.map((v, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
   const areaPath = speeds.map((v, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ")
     + ` L${x(n-1).toFixed(1)},${H} L${x(0).toFixed(1)},${H} Z`;
   const linePath = speeds.map((v, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
 
-  // Point pour chaque mesure : coloré si phénomène actif, discret sinon
   const dots = hours24.map((h, i) => {
     const col = phenColorForHour(h, station);
-    if (!col) return ""; // pas de point si pas d'événement
-    const cx = x(i).toFixed(1);
-    const cy = y(speeds[i]).toFixed(1);
-    return `<circle cx="${cx}" cy="${cy}" r="3" fill="${col}" opacity="0.95"/>`;
+    if (!col) return "";
+    return `<circle cx="${x(i).toFixed(1)}" cy="${y(speeds[i]).toFixed(1)}" r="2.5" fill="${col}" opacity="0.95"/>`;
   }).join("");
 
+  // "maintenant" à droite avec label
   const nowX = x(n - 1).toFixed(1);
 
   return `<svg class="sparkline" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <linearGradient id="sg-${stationId}" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.25"/>
+        <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.3"/>
         <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.02"/>
       </linearGradient>
     </defs>
+    ${gridLines.join("")}
     <path d="${areaPath}" fill="url(#sg-${stationId})"/>
-    <path d="${gustPath}" fill="none" stroke="#ff6b6b" stroke-width="1" opacity="0.35"/>
+    <path d="${gustPath}" fill="none" stroke="#ff6b6b" stroke-width="1" opacity="0.4"/>
     <path d="${linePath}" fill="none" stroke="#38bdf8" stroke-width="1.5"/>
     ${dots}
-    <line x1="${nowX}" y1="0" x2="${nowX}" y2="${H}" stroke="#ffffff" stroke-width="0.5" opacity="0.2"/>
+    <line x1="${nowX}" y1="0" x2="${nowX}" y2="${H - 10}" stroke="#ffffff" stroke-width="1" opacity="0.5"/>
+    <text x="${nowX}" y="${H - 1}" text-anchor="end" font-size="7" fill="#ffffff" opacity="0.5" font-family="monospace">now</text>
   </svg>`;
 }
 
