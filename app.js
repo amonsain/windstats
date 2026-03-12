@@ -234,16 +234,19 @@ function renderStationShell(container, station) {
   el.id = `station-${station.id}`;
   el.innerHTML = `
     <div class="station-header" onclick="toggleStation('${station.id}')">
-      <div class="station-header-left">
-        <div class="station-header-top">
-          <span class="station-name">${station.name}</span>
-          <span class="station-id">PP${station.id}</span>
-          <span class="station-chevron" id="chevron-${station.id}">▸</span>
-        </div>
-        <div id="live-${station.id}" class="station-live">Chargement…</div>
-        <div id="ph-summary-${station.id}" class="ph-summary"></div>
+      <div class="station-header-top">
+        <span class="station-name">${station.name}</span>
+        <span class="station-id">PP${station.id}</span>
+        <span class="station-chevron" id="chevron-${station.id}">▸</span>
       </div>
-      <div id="spark-${station.id}" class="station-spark"></div>
+      <div class="station-header-row">
+        <div class="station-header-left">
+          <div id="live-${station.id}" class="station-live">Chargement…</div>
+          <div id="ph-summary-${station.id}" class="ph-summary"></div>
+        </div>
+        <div id="spark-${station.id}" class="station-spark"></div>
+      </div>
+      <div id="episode-${station.id}" class="station-episode"></div>
     </div>
     <p class="error-msg" id="error-${station.id}"></p>
     <div class="station-body collapsed" id="body-${station.id}">
@@ -413,7 +416,9 @@ function renderStation(station, data, episodesByPhenomenon, statsByPhenomenon, c
 
   // Dernier relevé + encart live (toujours visibles)
   const lastMeasure = data.hours.length > 0 ? data.hours[data.hours.length - 1] : null;
-  liveEl.innerHTML = renderLastMeasure(lastMeasure) + renderLiveBanner(station, data);
+  liveEl.innerHTML = renderLastMeasure(lastMeasure);
+  const episodeEl = document.getElementById(`episode-${station.id}`);
+  if (episodeEl) episodeEl.innerHTML = renderLiveBanner(station, data);
 
   // Sparkline 24h (toujours visible)
   const now24 = new Date();
