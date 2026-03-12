@@ -437,28 +437,74 @@
 
     .ep-table .gust { color: #fbbf24; }
 
-    .station-title {
+    .station-header {
       cursor: pointer;
       user-select: none;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      transition: background 0.1s;
     }
 
-    .station-title:hover .station-name {
-      opacity: 0.8;
+    .station-header:hover { background: rgba(255,255,255,0.03); }
+
+    .station-header-top {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.4rem;
     }
 
     .station-chevron {
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       color: var(--text-dim);
       margin-left: auto;
     }
 
-    .station-live {
-      margin-bottom: 0.5rem;
+    .station-live { margin-bottom: 0.3rem; }
+
+    /* Dernier relevé */
+    .last-measure {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.78rem;
+      font-family: var(--mono);
+      color: var(--text);
+      flex-wrap: wrap;
+      margin-bottom: 0.4rem;
     }
 
-    .station-body.collapsed {
-      display: none;
+    .lm-time  { color: var(--accent); font-weight: 500; }
+    .lm-sep   { color: var(--text-dim); }
+    .lm-speed { color: var(--text); }
+    .lm-gust  { }
+    .lm-dir   { color: var(--text-dim); }
+    .lm-age   { color: var(--text-dim); font-size: 0.7rem; }
+
+    /* Chips phénomènes condensés */
+    .ph-summary {
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+      margin-top: 0.2rem;
     }
+
+    .ph-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.72rem;
+      font-family: var(--mono);
+      background: color-mix(in srgb, var(--ph-color) 12%, transparent);
+      border: 1px solid color-mix(in srgb, var(--ph-color) 30%, transparent);
+      border-radius: 20px;
+      padding: 2px 8px;
+      color: var(--text-dim);
+    }
+
+    .ph-chip strong { color: var(--ph-color); }
+
+    .station-body.collapsed { display: none; }
 
     /* ── Responsive ───────────────────────────────────────────── */
     @media (max-width: 600px) {
