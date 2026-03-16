@@ -195,6 +195,40 @@ async function loadStationData(stationId) {
   return res.json();
 }
 
+async function fetchLivePP(stationId) {
+  try {
+    const res = await fetch(`https://api.pioupiou.fr/v1/live/${stationId}`);
+    if (!res.ok) return null;
+    const d = await res.json();
+    const m = d?.data?.measurements;
+    if (!m) return null;
+    return {
+      time:      d.data.location?.date || m.date,
+      speed_avg:  m.wind_speed_avg  != null ? Math.round(m.wind_speed_avg  * 3.6 * 10) / 10 : null,
+      speed_gust: m.wind_speed_max  != null ? Math.round(m.wind_speed_max  * 3.6 * 10) / 10 : null,
+      heading:    m.wind_heading    != null ? Math.round(m.wind_heading) : null,
+      source: "live",
+    };
+  } catch(e) { return null; }
+}
+
+function renderLiveMeasure(live, station) {
+  if (!live) return "";
+  const age = Math.round((new Date() - new Date(live.time)) / 60000);
+  const ageStr = age < 2 ? "à l'instant" : `il y a ${age} min`;
+  const liveBtn = station?.live_url
+    ? `<a class="lm-live" href="${station.live_url}" target="_blank" onclick="event.stopPropagation()">⚡ live</a>`
+    : "";
+  return `<div class="last-measure live-fresh">
+    <span class="lm-badge">LIVE</span>
+    <span class="lm-speed">${live.speed_avg} km/h</span>
+    <span class="lm-gust" style="color:#ff6b6b">↑${live.speed_gust} km/h</span>
+    <span class="lm-dir">${live.heading}°</span>
+    <span class="lm-age">${ageStr}</span>
+    ${liveBtn}
+  </div>`;
+}
+
 // ── Point d'entrée principal ───────────────────────────────────
 
 async function init() {
@@ -218,6 +252,15 @@ async function init() {
       const calendar = buildCalendar(episodesByPhenomenon);
 
       renderStation(station, data, episodesByPhenomenon, statsByPhenomenon, calendar);
+
+      // Fetch temps réel PP (non bloquant)
+      if (!station.source) {
+        fetchLivePP(station.id).then(live => {
+          if (!live) return;
+          const liveEl = document.getElementById(`live-${station.id}`);
+          if (liveEl) liveEl.innerHTML = renderLiveMeasure(live, station);
+        });
+      }
 
     } catch(err) {
       document.getElementById(`error-${station.id}`).textContent =
@@ -431,7 +474,7 @@ function renderStation(station, data, episodesByPhenomenon, statsByPhenomenon, c
 
   // Dernier relevé + encart live (toujours visibles)
   const lastMeasure = data.hours.length > 0 ? data.hours[data.hours.length - 1] : null;
-  liveEl.innerHTML = renderLastMeasure(lastMeasure);
+  liveEl.innerHTML = renderLastMeasure(lastMeasure, station);
   const episodeEl = document.getElementById(`episode-${station.id}`);
   if (episodeEl) episodeEl.innerHTML = renderLiveBanner(station, data);
 
@@ -497,10 +540,13 @@ function renderStation(station, data, episodesByPhenomenon, statsByPhenomenon, c
   }
 }
 
-function renderLastMeasure(last) {
+function renderLastMeasure(last, station) {
   if (!last) return "";
   const age = Math.round((new Date() - new Date(last.hour + ":00Z")) / 60000);
   const ageStr = age < 60 ? `il y a ${age} min` : `il y a ${Math.round(age/60)}h`;
+  const liveBtn = station?.live_url
+    ? `<a class="lm-live" href="${station.live_url}" target="_blank" onclick="event.stopPropagation()">⚡ live</a>`
+    : "";
   return `<div class="last-measure">
     <span class="lm-time">${fmtStart(last.hour, CONFIG.timezone)}</span>
     <span class="lm-sep">·</span>
@@ -508,6 +554,7 @@ function renderLastMeasure(last) {
     <span class="lm-gust" style="color:#ff6b6b">${last.speed_gust} km/h</span>
     <span class="lm-dir">${last.heading}°</span>
     <span class="lm-age">${ageStr}</span>
+    ${liveBtn}
   </div>`;
 }
 
