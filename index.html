@@ -2,8 +2,39 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>WindStats — Analyse Brise & Météo</title>
+
+  <!-- ── PWA / iPad ────────────────────────────────────────────── -->
+  <meta name="description" content="Analyse des brises et rentrées météo — Pioupiou &amp; Météo-France.">
+  <meta name="theme-color" content="#090c12">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="WindStats">
+  <meta name="format-detection" content="telephone=no">
+
+  <!-- Écrans de lancement iPad (portrait + paysage) -->
+  <link rel="apple-touch-startup-image" href="icons/splash/splash-2048x2732.png"
+        media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+  <link rel="apple-touch-startup-image" href="icons/splash/splash-2732x2048.png"
+        media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)">
+  <link rel="apple-touch-startup-image" href="icons/splash/splash-1640x2360.png"
+        media="(device-width: 820px) and (device-height: 1180px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+  <link rel="apple-touch-startup-image" href="icons/splash/splash-2360x1640.png"
+        media="(device-width: 820px) and (device-height: 1180px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)">
+  <link rel="apple-touch-startup-image" href="icons/splash/splash-1620x2160.png"
+        media="(device-width: 810px) and (device-height: 1080px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+  <link rel="apple-touch-startup-image" href="icons/splash/splash-2160x1620.png"
+        media="(device-width: 810px) and (device-height: 1080px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)">
+  <link rel="apple-touch-startup-image" href="icons/splash/splash-1488x2266.png"
+        media="(device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+  <link rel="apple-touch-startup-image" href="icons/splash/splash-2266x1488.png"
+        media="(device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)">
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
   <style>
@@ -20,14 +51,20 @@
       --accent:    #38bdf8;
     }
 
-    html { font-size: 15px; }
+    html {
+      font-size: 15px;
+      -webkit-text-size-adjust: 100%;   /* pas de zoom auto à la rotation iPad */
+    }
 
     body {
       background: var(--bg);
       color: var(--text);
       font-family: "DM Mono", monospace;
       min-height: 100vh;
-      padding-bottom: 4rem;
+      min-height: 100dvh;
+      padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior-y: contain;   /* pas de rebond blanc en mode appli */
     }
 
     /* ── Fond étoilé ──────────────────────────────────────────── */
@@ -44,11 +81,33 @@
     header {
       position: relative; z-index: 1;
       padding: 2.5rem 2rem 1.5rem;
+      padding-left:  max(2rem, env(safe-area-inset-left));
+      padding-right: max(2rem, env(safe-area-inset-right));
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: baseline;
       gap: 1rem;
     }
+
+    /* Rechargement manuel : en mode appli (standalone) il n'y a pas de
+       barre d'adresse pour rafraîchir. */
+    .reload-btn {
+      margin-left: auto;
+      align-self: center;
+      flex-shrink: 0;
+      width: 44px; height: 44px;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      color: var(--text-dim);
+      font-size: 1.05rem;
+      cursor: pointer;
+      -webkit-touch-callout: none;
+      transition: color 0.15s, border-color 0.15s, transform 0.3s;
+    }
+
+    .reload-btn:active { transform: rotate(180deg); color: var(--accent); }
 
     .logo {
       font-family: "Syne", sans-serif;
@@ -75,6 +134,8 @@
       max-width: 1100px;
       margin: 0 auto;
       padding: 2rem 1.5rem;
+      padding-left:  max(1.5rem, env(safe-area-inset-left));
+      padding-right: max(1.5rem, env(safe-area-inset-right));
       display: flex;
       flex-direction: column;
       gap: 3rem;
@@ -536,14 +597,82 @@
       height: 72px;
     }
 
+    /* ── Tactile ──────────────────────────────────────────────── */
+    /* Sur iPad, :hover reste « collé » après un tap : on le neutralise. */
+    @media (hover: none) {
+      .ph-header:hover,
+      .station-header:hover  { background: transparent; }
+      .ep-table tr:hover td  { background: transparent; }
+    }
+
+    @media (pointer: coarse) {
+      /* Cibles tactiles ≥ 44 px (Apple HIG) */
+      .station-header { padding: 0.9rem 1rem; }
+      .ph-header      { min-height: 44px; padding: 0.9rem 1rem; }
+      .cal-day        { min-height: 56px; }
+      .station-header,
+      .ph-header      { -webkit-touch-callout: none; }
+      /* retour visuel au tap, à défaut du survol */
+      .station-header:active,
+      .ph-header:active { background: rgba(255,255,255,0.05); }
+    }
+
+    /* Tableaux d'épisodes : défilement horizontal isolé plutôt que
+       débordement de la page. */
+    .episode-section {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-x: contain;
+    }
+
     /* ── Responsive ───────────────────────────────────────────── */
+
+    /* Téléphone */
     @media (max-width: 600px) {
-      header { flex-direction: column; gap: 0.3rem; padding: 1.5rem 1rem; }
+      header { flex-wrap: wrap; gap: 0.3rem; padding: 1.5rem 1rem; }
+      .logo  { width: 100%; }
+      .tagline { flex: 1; }
       main   { padding: 1rem; }
       .calendar-grid { grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); }
       .pill-time { font-size: 0.52rem; }
       .pill-vmax, .pill-gust { font-size: 0.52rem; }
       .ep-table { font-size: 0.7rem; }
+    }
+
+    /* iPad portrait (768–1024) — mini, 10.2", Air/Pro 11" et 12.9" */
+    @media (min-width: 601px) and (max-width: 1024px) {
+      html { font-size: 16px; }
+      main { max-width: 100%; padding: 1.75rem 1.5rem; gap: 2.5rem; }
+      .phenomena-grid { grid-template-columns: repeat(2, 1fr); }
+      .charts-row     { grid-template-columns: repeat(2, 1fr); }
+      .calendar-grid  { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); }
+      .station-spark  { width: 38%; max-width: 300px; }
+    }
+
+    /* iPad paysage & grand écran */
+    @media (min-width: 1025px) {
+      main { max-width: 1240px; }
+      .calendar-grid { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); }
+    }
+
+    /* Split View / Slide Over : l'appli devient étroite sans être un mobile */
+    @media (min-width: 601px) and (max-width: 700px) {
+      .phenomena-grid, .charts-row { grid-template-columns: 1fr; }
+      .station-header-row { flex-direction: column; align-items: stretch; }
+      .station-spark { width: 100%; max-width: none; }
+    }
+
+    /* Mode appli (écran d'accueil) : on dégage la barre d'état iPadOS */
+    @media (display-mode: standalone) {
+      header { padding-top: calc(1.5rem + env(safe-area-inset-top)); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
     }
   </style>
 </head>
@@ -552,6 +681,8 @@
 <header>
   <div class="logo">Wind<span>Stats</span></div>
   <div class="tagline">Analyse brise &amp; rentrées météo</div>
+  <button class="reload-btn" type="button" aria-label="Recharger les données"
+          onclick="location.reload()">↻</button>
 </header>
 
 <main id="app">
@@ -560,5 +691,43 @@
 
 <script src="config.js"></script>
 <script src="app.js"></script>
+
+<script>
+  /* ── Mode appli (PWA) ─────────────────────────────────────────
+     Enregistrement du service worker + rafraîchissement au retour
+     au premier plan : sur iPad l'appli reste ouverte des jours et
+     afficherait sinon des données périmées.                       */
+  (function () {
+    if ("serviceWorker" in navigator) {
+      var hadController = !!navigator.serviceWorker.controller;
+
+      window.addEventListener("load", function () {
+        navigator.serviceWorker.register("sw.js").catch(function (err) {
+          console.warn("Service worker non enregistré :", err);
+        });
+      });
+
+      // Nouvelle version installée → on recharge une seule fois.
+      var refreshing = false;
+      navigator.serviceWorker.addEventListener("controllerchange", function () {
+        if (refreshing || !hadController) return;
+        refreshing = true;
+        location.reload();
+      });
+    }
+
+    var hiddenAt = null;
+    var STALE_MS = 5 * 60 * 1000;
+
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "hidden") {
+        hiddenAt = Date.now();
+      } else if (hiddenAt && Date.now() - hiddenAt > STALE_MS) {
+        hiddenAt = null;
+        location.reload();
+      }
+    });
+  })();
+</script>
 </body>
 </html>
