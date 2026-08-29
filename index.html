@@ -69,6 +69,18 @@
       text-transform: uppercase;
     }
 
+    header .nav {
+      margin-left: auto;
+      font-size: 0.75rem;
+      color: var(--accent);
+      text-decoration: none;
+      border: 1px solid rgba(56,189,248,0.25);
+      border-radius: 6px;
+      padding: 0.3rem 0.7rem;
+    }
+
+    header .nav:hover { background: rgba(56,189,248,0.1); }
+
     /* ── Layout ───────────────────────────────────────────────── */
     main {
       position: relative; z-index: 1;
@@ -538,7 +550,8 @@
 
     /* ── Responsive ───────────────────────────────────────────── */
     @media (max-width: 600px) {
-      header { flex-direction: column; gap: 0.3rem; padding: 1.5rem 1rem; }
+      header { flex-direction: column; gap: 0.5rem; padding: 1.5rem 1rem; align-items: flex-start; }
+      header .nav { margin-left: 0; }
       main   { padding: 1rem; }
       .calendar-grid { grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); }
       .pill-time { font-size: 0.52rem; }
@@ -552,6 +565,7 @@
 <header>
   <div class="logo">Wind<span>Stats</span></div>
   <div class="tagline">Analyse brise &amp; rentrées météo</div>
+  <a class="nav" href="gordonbennett.html">Gordon Bennett →</a>
 </header>
 
 <main id="app">
